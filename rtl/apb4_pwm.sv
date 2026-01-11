@@ -92,7 +92,7 @@ module apb4_pwm (
     if (s_bit_clr) begin
       s_pwm_cnt_d = '0;
     end else if (s_normal_mode) begin
-      if (s_pwm_cnt_q >= s_pwm_cmp_q - 1) begin
+      if (s_pwm_cnt_q >= s_pwm_cmp_q - `PWM_CMP_WIDTH'(1)) begin
         s_pwm_cnt_d = '0;
       end else begin
         s_pwm_cnt_d = s_pwm_cnt_q + 1'b1;
@@ -169,7 +169,7 @@ module apb4_pwm (
   ) u_irq_cdc_sync (
       apb4.pclk,
       apb4.presetn,
-      s_pwm_cnt_q >= s_pwm_cmp_q - 1,
+      s_pwm_cnt_q >= s_pwm_cmp_q - `PWM_CMP_WIDTH'(1),
       s_ov_irq_trg
   );
 
