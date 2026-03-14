@@ -158,10 +158,10 @@ module apb4_pwm (
   );
 
   // NOTE: need to assure the s_pwmcrrx_q less than s_pwmcmp_q
-  assign pwm.pwm_o[0] = s_pwm_cnt_q >= s_pwm_cr0_q;
-  assign pwm.pwm_o[1] = s_pwm_cnt_q >= s_pwm_cr1_q;
-  assign pwm.pwm_o[2] = s_pwm_cnt_q >= s_pwm_cr2_q;
-  assign pwm.pwm_o[3] = s_pwm_cnt_q >= s_pwm_cr3_q;
+  assign pwm.do_o[0] = s_pwm_cnt_q >= s_pwm_cr0_q;
+  assign pwm.do_o[1] = s_pwm_cnt_q >= s_pwm_cr1_q;
+  assign pwm.do_o[2] = s_pwm_cnt_q >= s_pwm_cr2_q;
+  assign pwm.do_o[3] = s_pwm_cnt_q >= s_pwm_cr3_q;
 
   cdc_sync #(
       .STAGE     (2),

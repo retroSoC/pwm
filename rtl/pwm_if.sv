@@ -9,9 +9,9 @@
 // See the Mulan PSL v2 for more details.
 
 interface pwm_if ();
-  logic [3:0] pwm_o;
+  logic [3:0] do_o;
   logic       irq_o;
 
-  modport dut(output pwm_o, output irq_o);
-  modport tb(input pwm_o, input irq_o);
+  modport dut(output do_o, output irq_o);
+  modport tb(input do_o, input irq_o);
 endinterface
