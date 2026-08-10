@@ -1,17 +1,31 @@
-// Copyright (c) 2023-2024 Miao Yuchi <miaoyuchi@ict.ac.cn>
-// pwm is licensed under Mulan PSL v2.
-// You can use this software according to the terms and conditions of the Mulan PSL v2.
-// You may obtain a copy of Mulan PSL v2 at:
-//             http://license.coscl.org.cn/MulanPSL2
-// THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
-// EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
-// MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
-// See the Mulan PSL v2 for more details.
+// Copyright (c) 2023-2026 Yuchi Miao <miaoyuchi@ict.ac.cn>
+// SPDX-License-Identifier: MulanPSL-2.0
 
 interface pwm_if ();
-  logic [3:0] do_o;
+  logic [3:0] pwm_o;
+  logic [3:0] oe_o;
+  logic       fault_i;
+  logic       sync_i;
+  logic [1:0] capture_i;
   logic       irq_o;
 
-  modport dut(output do_o, output irq_o);
-  modport tb(input do_o, input irq_o);
+  modport dut(
+      output pwm_o,
+      output oe_o,
+      input fault_i,
+      input sync_i,
+      input capture_i,
+      output irq_o
+  );
+
+  modport soc(
+      input pwm_o,
+      input oe_o,
+      output fault_i,
+      output sync_i,
+      output capture_i,
+      input irq_o
+  );
+
+  modport tb(input pwm_o, input oe_o, output fault_i, output sync_i, output capture_i, input irq_o);
 endinterface

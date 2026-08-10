@@ -1,78 +1,181 @@
-// Copyright (c) 2023-2024 Miao Yuchi <miaoyuchi@ict.ac.cn>
-// pwm is licensed under Mulan PSL v2.
-// You can use this software according to the terms and conditions of the Mulan PSL v2.
-// You may obtain a copy of Mulan PSL v2 at:
-//             http://license.coscl.org.cn/MulanPSL2
-// THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
-// EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
-// MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
-// See the Mulan PSL v2 for more details.
+// Copyright (c) 2023-2026 Yuchi Miao <miaoyuchi@ict.ac.cn>
+// SPDX-License-Identifier: MulanPSL-2.0
 
-`ifndef INC_PWM_DEF_SVH
-`define INC_PWM_DEF_SVH
-
-/* register mapping
- * PWM_CTRL:
- * BITS:   | 31:3 | 2   | 1  | 0    |
- * FIELDS: | RES  | CLR | EN | OVIE |
- * PERMS:  | NONE | RW  | RW | RW   |
- * ----------------------------------
- * PWM_PSCR:
- * BITS:   | 31:16 | 15:0 |
- * FIELDS: | RES   | PSCR |
- * PERMS:  | NONE  | RW   |
- * ----------------------------------
- * PWM_CNT:
- * BITS:   | 31:16 | 15:0 |
- * FIELDS: | RES   | CNT  |
- * PERMS:  | NONE  | none |
- * ----------------------------------
- * PWM_CMP:
- * BITS:   | 31:16 | 15:0 |
- * FIELDS: | RES   | CMP  |
- * PERMS:  | NONE  | RW   |
- * ----------------------------------
- * PWM_CRX:
- * BITS:   | 31:16 | 15:0 |
- * FIELDS: | RES   | CRX  |
- * PERMS:  | NONE  | RW   |
- * ----------------------------------
- * PWM_STAT:
- * BITS:   | 31:1  | 0    |
- * FIELDS: | RES   | OVIF |
- * PERMS:  | NONE  | RO   |
- * ----------------------------------
-*/
+`ifndef PWM_DEFINE_SVH
+`define PWM_DEFINE_SVH
 
 // verilog_format: off
-`define PWM_CTRL 4'b0000 // BASEADDR + 0x00
-`define PWM_PSCR 4'b0001 // BASEADDR + 0x04
-`define PWM_CNT  4'b0010 // BASEADDR + 0x08
-`define PWM_CMP  4'b0011 // BASEADDR + 0x0C
-`define PWM_CR0  4'b0100 // BASEADDR + 0x10
-`define PWM_CR1  4'b0101 // BASEADDR + 0x14
-`define PWM_CR2  4'b0110 // BASEADDR + 0x18
-`define PWM_CR3  4'b0111 // BASEADDR + 0x1C
-`define PWM_STAT 4'b1000 // BASEADDR + 0x20
+`define PWM_CTRL_OFFSET                   12'h000
+`define PWM_STATUS_OFFSET                 12'h004
+`define PWM_COMMAND_OFFSET                12'h008
+`define PWM_SAFETY_LOCK_OFFSET            12'h00C
+`define PWM_FAULT_CTRL_OFFSET             12'h010
+`define PWM_FAULT_SAFE_OFFSET             12'h014
+`define PWM_FAULT_STATUS_OFFSET           12'h018
+`define PWM_FAULT_CLEAR_OFFSET            12'h01C
+`define PWM_INTR_STATE_OFFSET             12'h020
+`define PWM_INTR_ENABLE_OFFSET            12'h024
+`define PWM_INTR_TEST_OFFSET              12'h028
+`define PWM_OUTPUT_STATUS_OFFSET          12'h02C
+`define PWM_CLOCK_HZ_OFFSET               12'h030
 
-`define PWM_CTRL_ADDR {26'b0, `PWM_CTRL, 2'b00}
-`define PWM_PSCR_ADDR {26'b0, `PWM_PSCR, 2'b00}
-`define PWM_CNT_ADDR  {26'b0, `PWM_CNT , 2'b00}
-`define PWM_CMP_ADDR  {26'b0, `PWM_CMP , 2'b00}
-`define PWM_CR0_ADDR  {26'b0, `PWM_CR0 , 2'b00}
-`define PWM_CR1_ADDR  {26'b0, `PWM_CR1 , 2'b00}
-`define PWM_CR2_ADDR  {26'b0, `PWM_CR2 , 2'b00}
-`define PWM_CR3_ADDR  {26'b0, `PWM_CR3 , 2'b00}
-`define PWM_STAT_ADDR {26'b0, `PWM_STAT, 2'b00}
+`define PWM_TIMER_BASE_OFFSET             12'h100
+`define PWM_TIMER_STRIDE                  12'h040
+`define PWM_TIMER_CTRL_OFFSET             12'h000
+`define PWM_TIMER_DIVIDER_OFFSET          12'h004
+`define PWM_TIMER_PERIOD_OFFSET           12'h008
+`define PWM_TIMER_PHASE_OFFSET            12'h00C
+`define PWM_TIMER_COUNTER_OFFSET          12'h010
+`define PWM_TIMER_ACTIVE_DIVIDER_OFFSET   12'h014
+`define PWM_TIMER_ACTIVE_PERIOD_OFFSET    12'h018
+`define PWM_TIMER_STATUS_OFFSET           12'h01C
 
-`define PWM_CTRL_WIDTH 3
-`define PWM_PSCR_WIDTH 16
-`define PWM_CNT_WIDTH  16
-`define PWM_CMP_WIDTH  16
-`define PWM_CRX_WIDTH  16
-`define PWM_STAT_WIDTH 1
+`define PWM_CHANNEL_BASE_OFFSET           12'h200
+`define PWM_CHANNEL_STRIDE                12'h040
+`define PWM_CHANNEL_CTRL_OFFSET           12'h000
+`define PWM_CHANNEL_PHASE_OFFSET          12'h004
+`define PWM_CHANNEL_DUTY_OFFSET           12'h008
+`define PWM_CHANNEL_ACTION_OFFSET         12'h00C
+`define PWM_CHANNEL_FORCE_OFFSET          12'h010
+`define PWM_CHANNEL_FADE_CTRL_OFFSET      12'h014
+`define PWM_CHANNEL_FADE_TARGET_OFFSET    12'h018
+`define PWM_CHANNEL_FADE_STEP_OFFSET      12'h01C
+`define PWM_CHANNEL_FADE_INTERVAL_OFFSET  12'h020
+`define PWM_CHANNEL_FADE_STATUS_OFFSET    12'h024
+`define PWM_CHANNEL_ACTIVE_PHASE_OFFSET   12'h028
+`define PWM_CHANNEL_ACTIVE_DUTY_OFFSET    12'h02C
+`define PWM_CHANNEL_GAMMA_INDEX_OFFSET    12'h030
+`define PWM_CHANNEL_GAMMA_TARGET_OFFSET   12'h034
+`define PWM_CHANNEL_GAMMA_STEP_OFFSET     12'h038
+`define PWM_CHANNEL_GAMMA_INTERVAL_OFFSET 12'h03C
 
-`define PWM_PSCR_MIN_VAL  {{(`PWM_PSCR_WIDTH-2){1'b0}}, 2'd2}
+`define PWM_OPERATOR_BASE_OFFSET          12'h300
+`define PWM_OPERATOR_STRIDE               12'h040
+`define PWM_OPERATOR_CTRL_OFFSET          12'h000
+`define PWM_OPERATOR_DEADTIME_OFFSET      12'h004
+`define PWM_OPERATOR_CARRIER_OFFSET       12'h008
+`define PWM_OPERATOR_STATUS_OFFSET        12'h00C
+
+`define PWM_CAPTURE_CTRL_OFFSET           12'h400
+`define PWM_CAPTURE_DIVIDER_OFFSET        12'h404
+`define PWM_CAPTURE_COUNTER_OFFSET        12'h408
+`define PWM_CAPTURE_STATUS_OFFSET         12'h40C
+`define PWM_CAPTURE0_CTRL_OFFSET          12'h410
+`define PWM_CAPTURE0_STATUS_OFFSET        12'h414
+`define PWM_CAPTURE0_DATA_OFFSET          12'h418
+`define PWM_CAPTURE1_CTRL_OFFSET          12'h420
+`define PWM_CAPTURE1_STATUS_OFFSET        12'h424
+`define PWM_CAPTURE1_DATA_OFFSET          12'h428
+
+`define PWM_IP_ID_OFFSET                  12'h0F4
+`define PWM_IP_VERSION_OFFSET             12'h0F8
+`define PWM_CAPABILITY_OFFSET             12'h0FC
+
+`define PWM_CTRL_ENABLE_MASK              32'h0000_0001
+`define PWM_CTRL_DEBUG_FREEZE_MASK        32'h0000_0002
+`define PWM_CTRL_VALID_MASK               32'h0000_0003
+
+`define PWM_COMMAND_UPDATE_MASK           32'h0000_0001
+`define PWM_COMMAND_SYNC_MASK             32'h0000_0002
+`define PWM_COMMAND_FAULT_TEST_MASK        32'h0000_0004
+`define PWM_COMMAND_STOP_ALL_MASK          32'h0000_0008
+`define PWM_COMMAND_VALID_MASK             32'h0000_000F
+
+`define PWM_SAFETY_LOCK_MASK              32'h0000_0001
+
+`define PWM_FAULT_CTRL_ENABLE_MASK        32'h0000_0001
+`define PWM_FAULT_CTRL_ACTIVE_HIGH_MASK   32'h0000_0002
+`define PWM_FAULT_CTRL_ONE_SHOT_MASK      32'h0000_0004
+`define PWM_FAULT_CTRL_FILTER_MASK        32'h0000_00F0
+`define PWM_FAULT_CTRL_FILTER_SHIFT       4
+`define PWM_FAULT_CTRL_VALID_MASK         32'h0000_00F7
+`define PWM_FAULT_SAFE_VALID_MASK         32'h0000_00FF
+`define PWM_FAULT_CLEAR_MASK              32'h0000_0001
+
+`define PWM_TIMER_CTRL_ENABLE_MASK        32'h0000_0001
+`define PWM_TIMER_CTRL_MODE_MASK          32'h0000_0006
+`define PWM_TIMER_CTRL_MODE_SHIFT         1
+`define PWM_TIMER_CTRL_LOAD_MASK          32'h0000_0018
+`define PWM_TIMER_CTRL_LOAD_SHIFT         3
+`define PWM_TIMER_CTRL_SYNC_ENABLE_MASK   32'h0000_0020
+`define PWM_TIMER_CTRL_VALID_MASK         32'h0000_003F
+`define PWM_TIMER_DIVIDER_VALID_MASK      32'h00FF_FFFF
+`define PWM_TIMER_PERIOD_VALID_MASK       32'h00FF_FFFF
+`define PWM_TIMER_PHASE_VALID_MASK        32'h00FF_FFFF
+`define PWM_TIMER_DIVIDER_MIN             32'h0000_0100
+`define PWM_TIMER_PERIOD_MIN              32'h0000_0002
+
+`define PWM_CHANNEL_CTRL_ENABLE_MASK      32'h0000_0001
+`define PWM_CHANNEL_CTRL_TIMER_MASK       32'h0000_0002
+`define PWM_CHANNEL_CTRL_INVERT_MASK      32'h0000_0004
+`define PWM_CHANNEL_CTRL_VALID_MASK       32'h0000_0007
+`define PWM_CHANNEL_VALUE_VALID_MASK      32'h00FF_FFFF
+`define PWM_CHANNEL_ACTION_VALID_MASK     32'h0000_FFFF
+`define PWM_CHANNEL_FORCE_ENABLE_MASK     32'h0000_0001
+`define PWM_CHANNEL_FORCE_VALUE_MASK      32'h0000_0002
+`define PWM_CHANNEL_FORCE_VALID_MASK      32'h0000_0003
+
+`define PWM_FADE_CTRL_START_MASK          32'h0000_0001
+`define PWM_FADE_CTRL_PAUSE_MASK          32'h0000_0002
+`define PWM_FADE_CTRL_RESUME_MASK         32'h0000_0004
+`define PWM_FADE_CTRL_STOP_MASK           32'h0000_0008
+`define PWM_FADE_CTRL_GAMMA_MASK          32'h0000_0010
+`define PWM_FADE_CTRL_SEGMENTS_MASK       32'h0000_0F00
+`define PWM_FADE_CTRL_SEGMENTS_SHIFT      8
+`define PWM_FADE_CTRL_VALID_MASK          32'h0000_0F1F
+`define PWM_FADE_STEP_VALID_MASK          32'h00FF_FFFF
+`define PWM_FADE_INTERVAL_VALID_MASK      32'h0000_FFFF
+`define PWM_GAMMA_INDEX_VALID_MASK        32'h0000_0007
+
+`define PWM_OPERATOR_CTRL_COMPLEMENT_MASK 32'h0000_0001
+`define PWM_OPERATOR_CTRL_CARRIER_MASK    32'h0000_0002
+`define PWM_OPERATOR_CTRL_VALID_MASK      32'h0000_0003
+`define PWM_OPERATOR_CARRIER_VALID_MASK   32'h0001_FFFF
+
+`define PWM_CAPTURE_CTRL_ENABLE_MASK      32'h0000_0001
+`define PWM_CAPTURE_CTRL_CLEAR_MASK       32'h0000_0002
+`define PWM_CAPTURE_CTRL_VALID_MASK       32'h0000_0003
+`define PWM_CAPTURE_CH_ENABLE_MASK        32'h0000_0001
+`define PWM_CAPTURE_CH_RISE_MASK          32'h0000_0002
+`define PWM_CAPTURE_CH_FALL_MASK          32'h0000_0004
+`define PWM_CAPTURE_CH_FILTER_MASK        32'h0000_00F0
+`define PWM_CAPTURE_CH_FILTER_SHIFT       4
+`define PWM_CAPTURE_CH_WATERMARK_MASK     32'h0000_0700
+`define PWM_CAPTURE_CH_WATERMARK_SHIFT    8
+`define PWM_CAPTURE_CH_VALID_MASK         32'h0000_07F7
+
+`define PWM_INTR_TIMER0_ZERO_MASK         32'h0000_0001
+`define PWM_INTR_TIMER1_ZERO_MASK         32'h0000_0002
+`define PWM_INTR_TIMER0_PERIOD_MASK       32'h0000_0004
+`define PWM_INTR_TIMER1_PERIOD_MASK       32'h0000_0008
+`define PWM_INTR_TIMER0_UPDATE_MASK       32'h0000_0010
+`define PWM_INTR_TIMER1_UPDATE_MASK       32'h0000_0020
+`define PWM_INTR_FADE0_DONE_MASK          32'h0000_0040
+`define PWM_INTR_FADE1_DONE_MASK          32'h0000_0080
+`define PWM_INTR_FADE2_DONE_MASK          32'h0000_0100
+`define PWM_INTR_FADE3_DONE_MASK          32'h0000_0200
+`define PWM_INTR_FAULT_MASK               32'h0000_0400
+`define PWM_INTR_CAPTURE0_MASK            32'h0000_0800
+`define PWM_INTR_CAPTURE1_MASK            32'h0000_1000
+`define PWM_INTR_CAPTURE0_OVERFLOW_MASK   32'h0000_2000
+`define PWM_INTR_CAPTURE1_OVERFLOW_MASK   32'h0000_4000
+`define PWM_INTR_VALID_MASK               32'h0000_7FFF
+
+`define PWM_ACTION_HOLD                   2'b00
+`define PWM_ACTION_LOW                    2'b01
+`define PWM_ACTION_HIGH                   2'b10
+`define PWM_ACTION_TOGGLE                 2'b11
+
+`define PWM_IP_ID_VALUE                   32'h5057_4D32
+`define PWM_IP_VERSION_VALUE              32'h0002_0000
+`define PWM_CAPABILITY_FEATURES           8'hFF
+`define PWM_ABI_VERSION                   8'h02
+`define PWM_TIMER_COUNT                   2
+`define PWM_OPERATOR_COUNT                2
+`define PWM_CHANNEL_COUNT                 4
+`define PWM_CAPTURE_COUNT                 2
+`define PWM_GAMMA_SEGMENT_COUNT           8
+`define PWM_CAPTURE_FIFO_DEPTH            4
 // verilog_format: on
 
 `endif

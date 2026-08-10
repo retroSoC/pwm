@@ -1,0 +1,13 @@
+[options]
+mode prove
+depth 40
+
+[engines]
+smtbmc bitwuzla
+
+[script]
+read -formal pwm_formal.v
+prep -top pwm_formal
+
+[files]
+build/formal-src/pwm_formal.v
