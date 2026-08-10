@@ -103,6 +103,11 @@ Channel `n` is at `0x200 + n * 0x40`, for `n=0..3`.
 | `0x38` | `GAMMA_STEP` | RW | Selected segment step. |
 | `0x3C` | `GAMMA_INTERVAL` | RW | Selected segment interval. |
 
+`ACTION` assigns bits `[1:0]` to zero, `[3:2]` to period, `[5:4]` to
+phase-up, `[7:6]` to duty-up, `[9:8]` to phase-down, `[11:10]` to duty-down,
+`[13:12]` to sync, and `[15:14]` to fade-done. Each field selects hold, low,
+high, or toggle behavior.
+
 ## Operator Blocks
 
 Operator `n` is at `0x300 + n * 0x40`, for `n=0..1`.

@@ -45,7 +45,7 @@ timer loops.
 ## LED and Motor Features
 
 Every channel has a 16-bit action table with two-bit actions for zero, period,
-compare-up, compare-down, sync, fault, fade-done, and reserved events. Actions
+phase-up, duty-up, phase-down, duty-down, sync, and fade-done events. Actions
 are hold, low, high, or toggle. Linear fade moves duty toward one target. Gamma
 mode executes up to eight target/step/interval segments stored in channel-local
 register arrays.

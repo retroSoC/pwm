@@ -15,13 +15,16 @@ module pwm_core (
     input  logic        stop_all_i,
     input  logic        fault_test_i,
     input  logic        fault_clear_i,
-    input  logic [31:0] fault_ctrl_i,
-    input  logic [31:0] fault_safe_i,
-    input  logic [31:0] timer_ctrl_i          [0:`PWM_TIMER_COUNT-1],
+    input  logic        fault_enable_i,
+    input  logic        fault_active_high_i,
+    input  logic        fault_one_shot_i,
+    input  logic [ 3:0] fault_filter_i,
+    input  logic [ 7:0] fault_safe_i,
+    input  logic [ 5:0] timer_ctrl_i          [0:`PWM_TIMER_COUNT-1],
     input  logic [23:0] timer_divider_i       [0:`PWM_TIMER_COUNT-1],
     input  logic [23:0] timer_period_i        [0:`PWM_TIMER_COUNT-1],
     input  logic [23:0] timer_phase_i         [0:`PWM_TIMER_COUNT-1],
-    input  logic [31:0] channel_ctrl_i        [0:`PWM_CHANNEL_COUNT-1],
+    input  logic [ 2:0] channel_ctrl_i        [0:`PWM_CHANNEL_COUNT-1],
     input  logic [23:0] channel_phase_i       [0:`PWM_CHANNEL_COUNT-1],
     input  logic [23:0] channel_duty_i        [0:`PWM_CHANNEL_COUNT-1],
     input  logic [15:0] channel_action_i      [0:`PWM_CHANNEL_COUNT-1],
@@ -41,7 +44,7 @@ module pwm_core (
     output logic [23:0] gamma_target_o        [0:`PWM_CHANNEL_COUNT-1],
     output logic [23:0] gamma_step_o          [0:`PWM_CHANNEL_COUNT-1],
     output logic [15:0] gamma_interval_o      [0:`PWM_CHANNEL_COUNT-1],
-    input  logic [31:0] operator_ctrl_i       [0:`PWM_OPERATOR_COUNT-1],
+    input  logic [ 1:0] operator_ctrl_i       [0:`PWM_OPERATOR_COUNT-1],
     input  logic [31:0] operator_deadtime_i   [0:`PWM_OPERATOR_COUNT-1],
     input  logic [31:0] operator_carrier_i    [0:`PWM_OPERATOR_COUNT-1],
     input  logic        capture_enable_i,
@@ -54,7 +57,7 @@ module pwm_core (
     input  logic [ 1:0] capture_i,
     output logic [ 3:0] pwm_o,
     output logic [ 3:0] oe_o,
-    output logic [31:0] event_o,
+    output logic [14:0] event_o,
     output logic [31:0] status_o,
     output logic [31:0] fault_status_o,
     output logic [31:0] output_status_o,
@@ -115,7 +118,7 @@ module pwm_core (
   logic [ 1:0] s_capture_watermark;
 
   assign s_freeze    = debug_freeze_i && debug_halted_i;
-  assign s_fault_raw = fault_ctrl_i[0] && (fault_ctrl_i[1] ? fault_i : ~fault_i);
+  assign s_fault_raw = fault_enable_i && (fault_active_high_i ? fault_i : ~fault_i);
 
   cdc_sync #(
       .STAGE     (2),
@@ -129,17 +132,18 @@ module pwm_core (
 
   assign s_external_sync_pulse = s_sync_meta && !s_sync_prev_q;
   assign s_sync_prev_d = s_sync_meta;
-  assign s_fault_sync_active = fault_ctrl_i[0] && (fault_ctrl_i[1] ? s_fault_meta : ~s_fault_meta);
+  assign s_fault_sync_active =
+      fault_enable_i && (fault_active_high_i ? s_fault_meta : ~s_fault_meta);
 
   always_comb begin
     s_fault_filter_count_d = s_fault_filter_count_q;
     s_fault_filtered_d     = s_fault_filtered_q;
-    if (!fault_ctrl_i[0]) begin
+    if (!fault_enable_i) begin
       s_fault_filter_count_d = '0;
       s_fault_filtered_d     = 1'b0;
     end else if (s_fault_sync_active == s_fault_filtered_q) begin
       s_fault_filter_count_d = '0;
-    end else if (s_fault_filter_count_q >= fault_ctrl_i[7:4]) begin
+    end else if (s_fault_filter_count_q >= fault_filter_i) begin
       s_fault_filter_count_d = '0;
       s_fault_filtered_d     = s_fault_sync_active;
     end else begin
@@ -151,12 +155,12 @@ module pwm_core (
 
   always_comb begin
     s_fault_latched_d = s_fault_latched_q;
-    if (!fault_ctrl_i[0]) s_fault_latched_d = 1'b0;
-    if (s_fault_event && fault_ctrl_i[2]) s_fault_latched_d = 1'b1;
+    if (!fault_enable_i) s_fault_latched_d = 1'b0;
+    if (s_fault_event && fault_one_shot_i) s_fault_latched_d = 1'b1;
     if (fault_clear_i && !s_fault_sync_active) s_fault_latched_d = 1'b0;
   end
 
-  assign s_fault_kill = fault_ctrl_i[0] &&
+  assign s_fault_kill = fault_enable_i &&
       (s_fault_raw || s_fault_filtered_q || s_fault_latched_q || fault_test_i);
 
   for (genvar timer = 0; timer < `PWM_TIMER_COUNT; timer++) begin : gen_timer

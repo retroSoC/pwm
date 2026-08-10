@@ -13,7 +13,7 @@ module pwm_timer (
     input  logic        software_sync_i,
     input  logic        external_sync_i,
     input  logic        peer_zero_i,
-    input  logic [31:0] ctrl_shadow_i,
+    input  logic [ 5:0] ctrl_shadow_i,
     input  logic [23:0] divider_shadow_i,
     input  logic [23:0] period_shadow_i,
     input  logic [23:0] phase_shadow_i,
@@ -32,7 +32,7 @@ module pwm_timer (
     // verilog_format: on
 );
 
-  logic [31:0] s_ctrl_q;
+  logic [5:0] s_ctrl_q;
   logic [23:0] s_divider_q, s_period_q, s_phase_q;
   logic [23:0] s_counter_d, s_counter_q;
   logic s_direction_d, s_direction_q;
@@ -136,7 +136,7 @@ module pwm_timer (
   end
 
   dffer #(
-      .DATA_WIDTH(32)
+      .DATA_WIDTH(6)
   ) u_ctrl_dffer (
       .clk_i  (clk_i),
       .rst_n_i(rst_n_i),

@@ -3,36 +3,37 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 .DELETE_ON_ERROR:
 
-ROOT           := $(abspath $(dir $(firstword $(MAKEFILE_LIST))))
-COMMON_ROOT    ?= $(abspath $(ROOT)/../common)
-BUILD_DIR      ?= $(ROOT)/build
-IVERILOG       ?= iverilog
-VVP            ?= vvp
-VERILATOR      ?= verilator
+ROOT := $(abspath $(dir $(firstword $(MAKEFILE_LIST))))
+COMMON_ROOT ?= $(abspath $(ROOT)/../common)
+BUILD_DIR ?= $(ROOT)/build
+IVERILOG ?= iverilog
+VVP ?= vvp
+VERILATOR ?= verilator
 VERIBLE_FORMAT ?= verible-verilog-format
-CLANG_FORMAT   ?= clang-format-14
-HOST_CC        ?= cc
-PYTHON         ?= python3
-SBY            ?= sby
-SV2V           ?= sv2v
+CLANG_FORMAT ?= clang-format-14
+HOST_CC ?= cc
+PYTHON ?= python3
+SBY ?= sby
+SV2V ?= sv2v
 
-RTL_SRCS  := rtl/pwm_pkg.sv rtl/pwm_tickgen.sv rtl/pwm_timer.sv rtl/pwm_channel.sv \
+RTL_SRCS := rtl/pwm_pkg.sv rtl/pwm_tickgen.sv rtl/pwm_timer.sv rtl/pwm_channel.sv \
             rtl/pwm_deadtime.sv rtl/pwm_carrier.sv rtl/pwm_capture.sv rtl/pwm_core.sv \
             rtl/pwm_reg.sv rtl/pwm_if.sv rtl/apb4_pwm.sv
 CORE_SRCS := rtl/pwm_tickgen.sv rtl/pwm_timer.sv rtl/pwm_channel.sv \
              rtl/pwm_deadtime.sv rtl/pwm_carrier.sv rtl/pwm_capture.sv rtl/pwm_core.sv \
              rtl/pwm_reg.sv
-RTL_HDRS  := rtl/pwm_define.svh
-C_SRCS    := sw/src/pwm.c sw/tests/test_pwm.c
-C_HDRS    := sw/include/pwm.h sw/include/pwm_regs.h
+RTL_HDRS := rtl/pwm_define.svh
+C_SRCS := sw/src/pwm.c sw/tests/test_pwm.c
+C_HDRS := sw/include/pwm.h sw/include/pwm_regs.h
 
-COMMON_APB      := $(COMMON_ROOT)/rtl/interface/apb4_if.sv
+COMMON_APB := $(COMMON_ROOT)/rtl/interface/apb4_if.sv
 COMMON_REGISTER := $(COMMON_ROOT)/rtl/utils/register.sv
-COMMON_FIFO     := $(COMMON_ROOT)/rtl/utils/fifo.sv
-COMMON_CDC      := $(COMMON_ROOT)/rtl/cdc/cdc_sync.sv
-IVERILOG_OUT    := $(BUILD_DIR)/iverilog/pwm_tb.vvp
-VERILATOR_DIR   := $(BUILD_DIR)/verilator
-HOST_TEST       := $(BUILD_DIR)/host/test_pwm
+COMMON_FIFO := $(COMMON_ROOT)/rtl/utils/fifo.sv
+COMMON_CDC := $(COMMON_ROOT)/rtl/cdc/cdc_sync.sv
+IVERILOG_OUT := $(BUILD_DIR)/iverilog/pwm_tb.vvp
+IVERILOG_CHANNEL_OUT := $(BUILD_DIR)/iverilog/pwm_channel_tb.vvp
+VERILATOR_DIR := $(BUILD_DIR)/verilator
+HOST_TEST := $(BUILD_DIR)/host/test_pwm
 
 .PHONY: help doctor format format-check register-check lint test test-iverilog \
 	test-verilator test-host synth formal clean
@@ -57,12 +58,12 @@ doctor:
 
 format:
 	$(VERIBLE_FORMAT) --flagfile=$(ROOT)/.verible-format --inplace $(RTL_SRCS) $(RTL_HDRS) \
-		dv/unit/pwm_tb.sv dv/unit/apb4_pwm_tb.sv formal/pwm_formal.sv
+		dv/unit/pwm_tb.sv dv/unit/pwm_channel_tb.sv dv/unit/apb4_pwm_tb.sv formal/pwm_formal.sv
 	$(CLANG_FORMAT) -i $(C_SRCS) $(C_HDRS)
 
 format-check:
-	@set -e; for file in $(RTL_SRCS) $(RTL_HDRS) dv/unit/pwm_tb.sv dv/unit/apb4_pwm_tb.sv \
-		formal/pwm_formal.sv; do \
+	@set -e; for file in $(RTL_SRCS) $(RTL_HDRS) dv/unit/pwm_tb.sv dv/unit/pwm_channel_tb.sv \
+		dv/unit/apb4_pwm_tb.sv formal/pwm_formal.sv; do \
 		tmp=$$(mktemp); $(VERIBLE_FORMAT) --flagfile=$(ROOT)/.verible-format $$file > $$tmp; \
 		cmp -s $$file $$tmp || { echo "SystemVerilog format mismatch: $$file" >&2; \
 		rm -f $$tmp; exit 1; }; rm -f $$tmp; \
@@ -88,9 +89,16 @@ $(IVERILOG_OUT): $(CORE_SRCS) $(RTL_HDRS) dv/unit/pwm_tb.sv
 		$(COMMON_REGISTER) $(COMMON_FIFO) $(COMMON_CDC) $(CORE_SRCS) \
 		dv/unit/pwm_tb.sv -s pwm_tb
 
-test-iverilog: $(IVERILOG_OUT)
+$(IVERILOG_CHANNEL_OUT): rtl/pwm_channel.sv $(RTL_HDRS) dv/unit/pwm_channel_tb.sv
+	@mkdir -p $(@D)
+	$(IVERILOG) -g2012 -DSV_ASSRT_DISABLE -Irtl -I$(COMMON_ROOT)/rtl -o $@ \
+		$(COMMON_REGISTER) rtl/pwm_channel.sv dv/unit/pwm_channel_tb.sv -s pwm_channel_tb
+
+test-iverilog: $(IVERILOG_OUT) $(IVERILOG_CHANNEL_OUT)
 	$(VVP) $(IVERILOG_OUT) | tee $(BUILD_DIR)/iverilog/test.log
 	@grep -q PWM_TEST_PASS $(BUILD_DIR)/iverilog/test.log
+	$(VVP) $(IVERILOG_CHANNEL_OUT) | tee $(BUILD_DIR)/iverilog/channel-test.log
+	@grep -q PWM_CHANNEL_TEST_PASS $(BUILD_DIR)/iverilog/channel-test.log
 
 test-verilator:
 	@mkdir -p $(VERILATOR_DIR) $(BUILD_DIR)/ccache-tmp $(BUILD_DIR)/tmp

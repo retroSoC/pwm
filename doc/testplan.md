@@ -6,6 +6,7 @@
 | APB alignment, access, byte strobes | Scalar subset | Yes | No | No |
 | Shadow update and debug freeze | Yes | Yes | No | Timeout API |
 | Linear and gamma fade | Basic | Linear | No | API validation |
+| Fade-done action `[15:14]` | Directed | Basic | No | Configuration |
 | Complementary/dead-time exclusion | Yes | Yes | Proven | Configuration |
 | Carrier modulation | Structural | Configuration | No | Validation |
 | Raw/filtered/one-shot fault | Yes | Yes | Safe output | Configuration |

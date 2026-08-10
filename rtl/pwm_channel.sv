@@ -12,7 +12,7 @@ module pwm_channel (
     input  logic        stop_i,
     input  logic        update_i,
     input  logic [ 1:0] timer_commit_i,
-    input  logic [31:0] ctrl_shadow_i,
+    input  logic [ 2:0] ctrl_shadow_i,
     input  logic [23:0] phase_shadow_i,
     input  logic [23:0] duty_shadow_i,
     input  logic [15:0] action_shadow_i,
@@ -52,7 +52,7 @@ module pwm_channel (
     // verilog_format: on
 );
 
-  logic [31:0] s_ctrl_q;
+  logic [ 2:0] s_ctrl_q;
   logic [23:0] s_phase_q;
   logic [23:0] s_duty_d, s_duty_q;
   logic [15:0] s_action_q;
@@ -253,6 +253,9 @@ module pwm_channel (
       if (timer_sync_i) begin
         s_output_d = apply_action(s_output_d, s_action_q[13:12]);
       end
+      if (fade_done_o) begin
+        s_output_d = apply_action(s_output_d, s_action_q[15:14]);
+      end
     end
 
     if (s_duty_q == '0) s_output_d = 1'b0;
@@ -262,7 +265,7 @@ module pwm_channel (
   assign raw_output_o = s_force_q[0] ? s_force_q[1] : (s_output_q ^ s_ctrl_q[2]);
 
   dffer #(
-      .DATA_WIDTH(32)
+      .DATA_WIDTH(3)
   ) u_ctrl_dffer (
       .clk_i  (clk_i),
       .rst_n_i(rst_n_i),

@@ -46,18 +46,17 @@ module pwm_reg #(
   logic s_transfer, s_read, s_write, s_access_legal;
   logic [31:0] s_write_mask, s_masked_wdata;
   logic [31:0] s_merged_word;
-  logic [31:0] s_state_merged_word;
   logic        s_enable_config_valid;
 
   logic [31:0] s_ctrl_d, s_ctrl_q;
   logic s_safety_lock_d, s_safety_lock_q;
-  logic [31:0] s_fault_ctrl_d, s_fault_ctrl_q;
-  logic [31:0] s_fault_safe_d, s_fault_safe_q;
+  logic [7:0] s_fault_ctrl_d, s_fault_ctrl_q;
+  logic [7:0] s_fault_safe_d, s_fault_safe_q;
   logic [14:0] s_intr_state_d, s_intr_state_q;
   logic [14:0] s_intr_enable_d, s_intr_enable_q;
 
-  logic [31:0] s_timer_ctrl_d           [   0:`PWM_TIMER_COUNT-1];
-  logic [31:0] s_timer_ctrl_q           [   0:`PWM_TIMER_COUNT-1];
+  logic [ 5:0] s_timer_ctrl_d           [   0:`PWM_TIMER_COUNT-1];
+  logic [ 5:0] s_timer_ctrl_q           [   0:`PWM_TIMER_COUNT-1];
   logic [23:0] s_timer_divider_d        [   0:`PWM_TIMER_COUNT-1];
   logic [23:0] s_timer_divider_q        [   0:`PWM_TIMER_COUNT-1];
   logic [23:0] s_timer_period_d         [   0:`PWM_TIMER_COUNT-1];
@@ -65,8 +64,8 @@ module pwm_reg #(
   logic [23:0] s_timer_phase_d          [   0:`PWM_TIMER_COUNT-1];
   logic [23:0] s_timer_phase_q          [   0:`PWM_TIMER_COUNT-1];
 
-  logic [31:0] s_channel_ctrl_d         [ 0:`PWM_CHANNEL_COUNT-1];
-  logic [31:0] s_channel_ctrl_q         [ 0:`PWM_CHANNEL_COUNT-1];
+  logic [ 2:0] s_channel_ctrl_d         [ 0:`PWM_CHANNEL_COUNT-1];
+  logic [ 2:0] s_channel_ctrl_q         [ 0:`PWM_CHANNEL_COUNT-1];
   logic [23:0] s_channel_phase_d        [ 0:`PWM_CHANNEL_COUNT-1];
   logic [23:0] s_channel_phase_q        [ 0:`PWM_CHANNEL_COUNT-1];
   logic [23:0] s_channel_duty_d         [ 0:`PWM_CHANNEL_COUNT-1];
@@ -88,8 +87,8 @@ module pwm_reg #(
   logic [ 2:0] s_gamma_index_d          [ 0:`PWM_CHANNEL_COUNT-1];
   logic [ 2:0] s_gamma_index_q          [ 0:`PWM_CHANNEL_COUNT-1];
 
-  logic [31:0] s_operator_ctrl_d        [0:`PWM_OPERATOR_COUNT-1];
-  logic [31:0] s_operator_ctrl_q        [0:`PWM_OPERATOR_COUNT-1];
+  logic [ 1:0] s_operator_ctrl_d        [0:`PWM_OPERATOR_COUNT-1];
+  logic [ 1:0] s_operator_ctrl_q        [0:`PWM_OPERATOR_COUNT-1];
   logic [31:0] s_operator_deadtime_d    [0:`PWM_OPERATOR_COUNT-1];
   logic [31:0] s_operator_deadtime_q    [0:`PWM_OPERATOR_COUNT-1];
   logic [31:0] s_operator_carrier_d     [0:`PWM_OPERATOR_COUNT-1];
@@ -114,7 +113,7 @@ module pwm_reg #(
   logic [15:0] s_gamma_interval_write_q[ 0:`PWM_CHANNEL_COUNT-1];
   logic [ 1:0] s_capture_pop;
 
-  logic [31:0] s_event;
+  logic [14:0] s_event;
   logic [31:0] s_status;
   logic [31:0] s_fault_status;
   logic [31:0] s_output_status;
@@ -140,57 +139,47 @@ module pwm_reg #(
   endfunction
 
   function automatic logic [23:0] merge_write24(input logic [23:0] current,
-                                                input logic [31:0] value, input logic [31:0] mask);
-    logic [31:0] merged;
-    begin
-      merged = merge_write({8'h00, current}, value, mask);
-      return merged[23:0];
-    end
+                                                input logic [23:0] value, input logic [23:0] mask);
+    return (current & ~mask) | (value & mask);
   endfunction
 
   function automatic logic [15:0] merge_write16(input logic [15:0] current,
-                                                input logic [31:0] value, input logic [31:0] mask);
-    logic [31:0] merged;
-    begin
-      merged = merge_write({16'h0000, current}, value, mask);
-      return merged[15:0];
-    end
+                                                input logic [15:0] value, input logic [15:0] mask);
+    return (current & ~mask) | (value & mask);
   endfunction
 
   function automatic logic [14:0] merge_write15(input logic [14:0] current,
-                                                input logic [31:0] value, input logic [31:0] mask);
-    logic [31:0] merged;
-    begin
-      merged = merge_write({17'h00000, current}, value, mask);
-      return merged[14:0];
-    end
+                                                input logic [14:0] value, input logic [14:0] mask);
+    return (current & ~mask) | (value & mask);
   endfunction
 
-  function automatic logic [2:0] merge_write3(input logic [2:0] current, input logic [31:0] value,
-                                              input logic [31:0] mask);
-    logic [31:0] merged;
-    begin
-      merged = merge_write({29'h00000000, current}, value, mask);
-      return merged[2:0];
-    end
+  function automatic logic [7:0] merge_write8(input logic [7:0] current, input logic [7:0] value,
+                                              input logic [7:0] mask);
+    return (current & ~mask) | (value & mask);
   endfunction
 
-  function automatic logic [1:0] merge_write2(input logic [1:0] current, input logic [31:0] value,
-                                              input logic [31:0] mask);
-    logic [31:0] merged;
-    begin
-      merged = merge_write({30'h00000000, current}, value, mask);
-      return merged[1:0];
-    end
+  function automatic logic [5:0] merge_write6(input logic [5:0] current, input logic [5:0] value,
+                                              input logic [5:0] mask);
+    return (current & ~mask) | (value & mask);
   endfunction
 
-  function automatic logic merge_write1(input logic current, input logic [31:0] value,
-                                        input logic [31:0] mask);
-    logic [31:0] merged;
-    begin
-      merged = merge_write({31'h00000000, current}, value, mask);
-      return merged[0];
-    end
+  function automatic logic [3:0] merge_write4(input logic [3:0] current, input logic [3:0] value,
+                                              input logic [3:0] mask);
+    return (current & ~mask) | (value & mask);
+  endfunction
+
+  function automatic logic [2:0] merge_write3(input logic [2:0] current, input logic [2:0] value,
+                                              input logic [2:0] mask);
+    return (current & ~mask) | (value & mask);
+  endfunction
+
+  function automatic logic [1:0] merge_write2(input logic [1:0] current, input logic [1:0] value,
+                                              input logic [1:0] mask);
+    return (current & ~mask) | (value & mask);
+  endfunction
+
+  function automatic logic merge_write1(input logic current, input logic value, input logic mask);
+    return (current & ~mask) | (value & mask);
   endfunction
 
   function automatic logic address_in_block(
@@ -245,8 +234,8 @@ module pwm_reg #(
         `PWM_CTRL_OFFSET:            prdata_o = s_ctrl_q;
         `PWM_STATUS_OFFSET:          prdata_o = s_status | {27'h0, s_safety_lock_q, 4'h0};
         `PWM_SAFETY_LOCK_OFFSET:     prdata_o = {31'h0, s_safety_lock_q};
-        `PWM_FAULT_CTRL_OFFSET:      prdata_o = s_fault_ctrl_q;
-        `PWM_FAULT_SAFE_OFFSET:      prdata_o = s_fault_safe_q;
+        `PWM_FAULT_CTRL_OFFSET:      prdata_o = {24'h000000, s_fault_ctrl_q};
+        `PWM_FAULT_SAFE_OFFSET:      prdata_o = {24'h000000, s_fault_safe_q};
         `PWM_FAULT_STATUS_OFFSET:    prdata_o = s_fault_status;
         `PWM_INTR_STATE_OFFSET:      prdata_o = {17'h0, s_intr_state_q};
         `PWM_INTR_ENABLE_OFFSET:     prdata_o = {17'h0, s_intr_enable_q};
@@ -279,7 +268,7 @@ module pwm_reg #(
               unique case ({
                 6'h00, paddr_i[5:0]
               })
-                `PWM_TIMER_CTRL_OFFSET: prdata_o = s_timer_ctrl_q[timer];
+                `PWM_TIMER_CTRL_OFFSET: prdata_o = {26'h0000000, s_timer_ctrl_q[timer]};
                 `PWM_TIMER_DIVIDER_OFFSET: prdata_o = {8'h00, s_timer_divider_q[timer]};
                 `PWM_TIMER_PERIOD_OFFSET: prdata_o = {8'h00, s_timer_period_q[timer]};
                 `PWM_TIMER_PHASE_OFFSET: prdata_o = {8'h00, s_timer_phase_q[timer]};
@@ -299,7 +288,7 @@ module pwm_reg #(
               unique case ({
                 6'h00, paddr_i[5:0]
               })
-                `PWM_CHANNEL_CTRL_OFFSET: prdata_o = s_channel_ctrl_q[channel];
+                `PWM_CHANNEL_CTRL_OFFSET: prdata_o = {29'h00000000, s_channel_ctrl_q[channel]};
                 `PWM_CHANNEL_PHASE_OFFSET: prdata_o = {8'h00, s_channel_phase_q[channel]};
                 `PWM_CHANNEL_DUTY_OFFSET: prdata_o = {8'h00, s_channel_duty_q[channel]};
                 `PWM_CHANNEL_ACTION_OFFSET: prdata_o = {16'h0000, s_channel_action_q[channel]};
@@ -339,11 +328,11 @@ module pwm_reg #(
               unique case ({
                 6'h00, paddr_i[5:0]
               })
-                `PWM_OPERATOR_CTRL_OFFSET:     prdata_o = s_operator_ctrl_q[operator];
+                `PWM_OPERATOR_CTRL_OFFSET: prdata_o = {30'h00000000, s_operator_ctrl_q[operator]};
                 `PWM_OPERATOR_DEADTIME_OFFSET: prdata_o = s_operator_deadtime_q[operator];
-                `PWM_OPERATOR_CARRIER_OFFSET:  prdata_o = s_operator_carrier_q[operator];
-                `PWM_OPERATOR_STATUS_OFFSET:   prdata_o = s_operator_status[operator];
-                default:                       s_access_legal = 1'b0;
+                `PWM_OPERATOR_CARRIER_OFFSET: prdata_o = s_operator_carrier_q[operator];
+                `PWM_OPERATOR_STATUS_OFFSET: prdata_o = s_operator_status[operator];
+                default: s_access_legal = 1'b0;
               endcase
             end
           end
@@ -361,12 +350,12 @@ module pwm_reg #(
         `PWM_SAFETY_LOCK_OFFSET:
         s_access_legal = !s_ctrl_q[0] && ((s_masked_wdata & ~`PWM_SAFETY_LOCK_MASK) == 0);
         `PWM_FAULT_CTRL_OFFSET: begin
-          s_merged_word = merge_write(s_fault_ctrl_q, pwdata_i, s_write_mask);
+          s_merged_word = merge_write({24'h000000, s_fault_ctrl_q}, pwdata_i, s_write_mask);
           s_access_legal = !s_ctrl_q[0] && !s_safety_lock_q &&
               ((s_merged_word & ~`PWM_FAULT_CTRL_VALID_MASK) == 0);
         end
         `PWM_FAULT_SAFE_OFFSET: begin
-          s_merged_word = merge_write(s_fault_safe_q, pwdata_i, s_write_mask);
+          s_merged_word = merge_write({24'h000000, s_fault_safe_q}, pwdata_i, s_write_mask);
           s_access_legal = !s_ctrl_q[0] && !s_safety_lock_q &&
               ((s_merged_word & ~`PWM_FAULT_SAFE_VALID_MASK) == 0);
         end
@@ -405,7 +394,8 @@ module pwm_reg #(
                 6'h00, paddr_i[5:0]
               })
                 `PWM_TIMER_CTRL_OFFSET: begin
-                  s_merged_word = merge_write(s_timer_ctrl_q[timer], pwdata_i, s_write_mask);
+                  s_merged_word =
+                      merge_write({26'h0000000, s_timer_ctrl_q[timer]}, pwdata_i, s_write_mask);
                   s_access_legal &= (s_merged_word & ~`PWM_TIMER_CTRL_VALID_MASK) == 0;
                 end
                 `PWM_TIMER_DIVIDER_OFFSET: begin
@@ -440,7 +430,8 @@ module pwm_reg #(
                 6'h00, paddr_i[5:0]
               })
                 `PWM_CHANNEL_CTRL_OFFSET: begin
-                  s_merged_word = merge_write(s_channel_ctrl_q[channel], pwdata_i, s_write_mask);
+                  s_merged_word = merge_write({29'h00000000, s_channel_ctrl_q[channel]}, pwdata_i,
+                                              s_write_mask);
                   s_access_legal &= (s_merged_word & ~`PWM_CHANNEL_CTRL_VALID_MASK) == 0;
                 end
                 `PWM_CHANNEL_PHASE_OFFSET: begin
@@ -543,7 +534,8 @@ module pwm_reg #(
                 6'h00, paddr_i[5:0]
               })
                 `PWM_OPERATOR_CTRL_OFFSET: begin
-                  s_merged_word = merge_write(s_operator_ctrl_q[operator], pwdata_i, s_write_mask);
+                  s_merged_word = merge_write({30'h00000000, s_operator_ctrl_q[operator]}, pwdata_i,
+                                              s_write_mask);
                   s_access_legal &= (s_merged_word & ~`PWM_OPERATOR_CTRL_VALID_MASK) == 0;
                 end
                 `PWM_OPERATOR_DEADTIME_OFFSET:
@@ -582,8 +574,6 @@ module pwm_reg #(
     s_intr_enable_d          = s_intr_enable_q;
     s_capture_enable_d       = s_capture_enable_q;
     s_capture_divider_d      = s_capture_divider_q;
-    s_state_merged_word      = '0;
-
     s_command_d              = '0;
     s_gamma_write_target_d   = '0;
     s_gamma_write_step_d     = '0;
@@ -632,20 +622,21 @@ module pwm_reg #(
         end
         `PWM_SAFETY_LOCK_OFFSET: s_safety_lock_d = s_safety_lock_q | s_masked_wdata[0];
         `PWM_FAULT_CTRL_OFFSET:
-        s_fault_ctrl_d = merge_write(s_fault_ctrl_q, pwdata_i, s_write_mask);
+        s_fault_ctrl_d = merge_write8(s_fault_ctrl_q, pwdata_i[7:0], s_write_mask[7:0]);
         `PWM_FAULT_SAFE_OFFSET:
-        s_fault_safe_d = merge_write(s_fault_safe_q, pwdata_i, s_write_mask);
+        s_fault_safe_d = merge_write8(s_fault_safe_q, pwdata_i[7:0], s_write_mask[7:0]);
         `PWM_FAULT_CLEAR_OFFSET: s_command_d[4] = s_masked_wdata[0];
         `PWM_INTR_STATE_OFFSET: s_intr_state_d = s_intr_state_q & ~s_masked_wdata[14:0];
         `PWM_INTR_ENABLE_OFFSET:
-        s_intr_enable_d = merge_write15(s_intr_enable_q, pwdata_i, s_write_mask);
+        s_intr_enable_d = merge_write15(s_intr_enable_q, pwdata_i[14:0], s_write_mask[14:0]);
         `PWM_INTR_TEST_OFFSET: s_intr_state_d = s_intr_state_q | s_masked_wdata[14:0];
         `PWM_CAPTURE_CTRL_OFFSET: begin
-          s_capture_enable_d = merge_write1(s_capture_enable_q, pwdata_i, s_write_mask);
+          s_capture_enable_d = merge_write1(s_capture_enable_q, pwdata_i[0], s_write_mask[0]);
           s_command_d[5]     = s_masked_wdata[1];
         end
         `PWM_CAPTURE_DIVIDER_OFFSET:
-        s_capture_divider_d = merge_write24(s_capture_divider_q, pwdata_i, s_write_mask);
+        s_capture_divider_d =
+            merge_write24(s_capture_divider_q, pwdata_i[23:0], s_write_mask[23:0]);
         `PWM_CAPTURE0_CTRL_OFFSET:
         s_capture_channel_ctrl_d[0] =
             merge_write(s_capture_channel_ctrl_q[0], pwdata_i, s_write_mask);
@@ -659,16 +650,17 @@ module pwm_reg #(
                 6'h00, paddr_i[5:0]
               })
                 `PWM_TIMER_CTRL_OFFSET:
-                s_timer_ctrl_d[timer] = merge_write(s_timer_ctrl_q[timer], pwdata_i, s_write_mask);
+                s_timer_ctrl_d[timer] =
+                    merge_write6(s_timer_ctrl_q[timer], pwdata_i[5:0], s_write_mask[5:0]);
                 `PWM_TIMER_DIVIDER_OFFSET:
                 s_timer_divider_d[timer] =
-                    merge_write24(s_timer_divider_q[timer], pwdata_i, s_write_mask);
+                    merge_write24(s_timer_divider_q[timer], pwdata_i[23:0], s_write_mask[23:0]);
                 `PWM_TIMER_PERIOD_OFFSET:
                 s_timer_period_d[timer] =
-                    merge_write24(s_timer_period_q[timer], pwdata_i, s_write_mask);
+                    merge_write24(s_timer_period_q[timer], pwdata_i[23:0], s_write_mask[23:0]);
                 `PWM_TIMER_PHASE_OFFSET:
                 s_timer_phase_d[timer] =
-                    merge_write24(s_timer_phase_q[timer], pwdata_i, s_write_mask);
+                    merge_write24(s_timer_phase_q[timer], pwdata_i[23:0], s_write_mask[23:0]);
                 default: begin
                 end
               endcase
@@ -683,60 +675,51 @@ module pwm_reg #(
               })
                 `PWM_CHANNEL_CTRL_OFFSET:
                 s_channel_ctrl_d[channel] =
-                    merge_write(s_channel_ctrl_q[channel], pwdata_i, s_write_mask);
+                    merge_write3(s_channel_ctrl_q[channel], pwdata_i[2:0], s_write_mask[2:0]);
                 `PWM_CHANNEL_PHASE_OFFSET:
                 s_channel_phase_d[channel] =
-                    merge_write24(s_channel_phase_q[channel], pwdata_i, s_write_mask);
+                    merge_write24(s_channel_phase_q[channel], pwdata_i[23:0], s_write_mask[23:0]);
                 `PWM_CHANNEL_DUTY_OFFSET:
                 s_channel_duty_d[channel] =
-                    merge_write24(s_channel_duty_q[channel], pwdata_i, s_write_mask);
+                    merge_write24(s_channel_duty_q[channel], pwdata_i[23:0], s_write_mask[23:0]);
                 `PWM_CHANNEL_ACTION_OFFSET:
                 s_channel_action_d[channel] =
-                    merge_write16(s_channel_action_q[channel], pwdata_i, s_write_mask);
+                    merge_write16(s_channel_action_q[channel], pwdata_i[15:0], s_write_mask[15:0]);
                 `PWM_CHANNEL_FORCE_OFFSET:
                 s_channel_force_d[channel] =
-                    merge_write2(s_channel_force_q[channel], pwdata_i, s_write_mask);
+                    merge_write2(s_channel_force_q[channel], pwdata_i[1:0], s_write_mask[1:0]);
                 `PWM_CHANNEL_FADE_CTRL_OFFSET: begin
                   s_fade_command_d[channel] = s_masked_wdata[4:0];
-                  s_state_merged_word = merge_write(
-                    {
-                      20'h00000,
-                      s_channel_fade_segments_q[channel],
-                      3'h0,
-                      s_channel_fade_gamma_q[channel],
-                      4'h0
-                    },
-                    pwdata_i,
-                    s_write_mask
-                  );
-                  s_channel_fade_gamma_d[channel] = s_state_merged_word[4];
-                  s_channel_fade_segments_d[channel] = s_state_merged_word[11:8];
+                  s_channel_fade_gamma_d[channel] =
+                      merge_write1(s_channel_fade_gamma_q[channel], pwdata_i[4], s_write_mask[4]);
+                  s_channel_fade_segments_d[channel] = merge_write4(
+                      s_channel_fade_segments_q[channel], pwdata_i[11:8], s_write_mask[11:8]);
                 end
                 `PWM_CHANNEL_FADE_TARGET_OFFSET:
-                s_channel_fade_target_d[channel] =
-                    merge_write24(s_channel_fade_target_q[channel], pwdata_i, s_write_mask);
+                s_channel_fade_target_d[channel] = merge_write24(
+                    s_channel_fade_target_q[channel], pwdata_i[23:0], s_write_mask[23:0]);
                 `PWM_CHANNEL_FADE_STEP_OFFSET:
-                s_channel_fade_step_d[channel] =
-                    merge_write24(s_channel_fade_step_q[channel], pwdata_i, s_write_mask);
+                s_channel_fade_step_d[channel] = merge_write24(s_channel_fade_step_q[channel],
+                                                               pwdata_i[23:0], s_write_mask[23:0]);
                 `PWM_CHANNEL_FADE_INTERVAL_OFFSET:
-                s_channel_fade_interval_d[channel] =
-                    merge_write16(s_channel_fade_interval_q[channel], pwdata_i, s_write_mask);
+                s_channel_fade_interval_d[channel] = merge_write16(
+                    s_channel_fade_interval_q[channel], pwdata_i[15:0], s_write_mask[15:0]);
                 `PWM_CHANNEL_GAMMA_INDEX_OFFSET:
                 s_gamma_index_d[channel] =
-                    merge_write3(s_gamma_index_q[channel], pwdata_i, s_write_mask);
+                    merge_write3(s_gamma_index_q[channel], pwdata_i[2:0], s_write_mask[2:0]);
                 `PWM_CHANNEL_GAMMA_TARGET_OFFSET: begin
-                  s_gamma_target_write_d[channel] =
-                      merge_write24(s_gamma_target_read[channel], pwdata_i, s_write_mask);
+                  s_gamma_target_write_d[channel] = merge_write24(
+                      s_gamma_target_read[channel], pwdata_i[23:0], s_write_mask[23:0]);
                   s_gamma_write_target_d[channel] = 1'b1;
                 end
                 `PWM_CHANNEL_GAMMA_STEP_OFFSET: begin
                   s_gamma_step_write_d[channel] =
-                      merge_write24(s_gamma_step_read[channel], pwdata_i, s_write_mask);
+                      merge_write24(s_gamma_step_read[channel], pwdata_i[23:0], s_write_mask[23:0]);
                   s_gamma_write_step_d[channel] = 1'b1;
                 end
                 `PWM_CHANNEL_GAMMA_INTERVAL_OFFSET: begin
-                  s_gamma_interval_write_d[channel] =
-                      merge_write16(s_gamma_interval_read[channel], pwdata_i, s_write_mask);
+                  s_gamma_interval_write_d[channel] = merge_write16(
+                      s_gamma_interval_read[channel], pwdata_i[15:0], s_write_mask[15:0]);
                   s_gamma_write_interval_d[channel] = 1'b1;
                 end
                 default: begin
@@ -753,7 +736,7 @@ module pwm_reg #(
               })
                 `PWM_OPERATOR_CTRL_OFFSET:
                 s_operator_ctrl_d[operator] =
-                    merge_write(s_operator_ctrl_q[operator], pwdata_i, s_write_mask);
+                    merge_write2(s_operator_ctrl_q[operator], pwdata_i[1:0], s_write_mask[1:0]);
                 `PWM_OPERATOR_DEADTIME_OFFSET:
                 s_operator_deadtime_d[operator] =
                     merge_write(s_operator_deadtime_q[operator], pwdata_i, s_write_mask);
@@ -769,7 +752,7 @@ module pwm_reg #(
       endcase
     end
 
-    s_intr_state_d = s_intr_state_d | s_event[14:0];
+    s_intr_state_d = s_intr_state_d | s_event;
   end
 
   pwm_core u_pwm_core (
@@ -783,7 +766,10 @@ module pwm_reg #(
       .stop_all_i              (s_command_q[3]),
       .fault_test_i            (s_command_q[2]),
       .fault_clear_i           (s_command_q[4]),
-      .fault_ctrl_i            (s_fault_ctrl_q),
+      .fault_enable_i          (s_fault_ctrl_q[0]),
+      .fault_active_high_i     (s_fault_ctrl_q[1]),
+      .fault_one_shot_i        (s_fault_ctrl_q[2]),
+      .fault_filter_i          (s_fault_ctrl_q[7:4]),
       .fault_safe_i            (s_fault_safe_q),
       .timer_ctrl_i            (s_timer_ctrl_q),
       .timer_divider_i         (s_timer_divider_q),
@@ -852,13 +838,13 @@ module pwm_reg #(
       .dat_i  (s_safety_lock_d),
       .dat_o  (s_safety_lock_q)
   );
-  dffr #(32) u_fault_ctrl_dffr (
+  dffr #(8) u_fault_ctrl_dffr (
       .clk_i  (clk_i),
       .rst_n_i(rst_n_i),
       .dat_i  (s_fault_ctrl_d),
       .dat_o  (s_fault_ctrl_q)
   );
-  dffr #(32) u_fault_safe_dffr (
+  dffr #(8) u_fault_safe_dffr (
       .clk_i  (clk_i),
       .rst_n_i(rst_n_i),
       .dat_i  (s_fault_safe_d),
@@ -906,7 +892,7 @@ module pwm_reg #(
   );
 
   for (genvar timer = 0; timer < `PWM_TIMER_COUNT; timer++) begin : gen_timer_registers
-    dffr #(32) u_timer_ctrl_dffr (
+    dffr #(6) u_timer_ctrl_dffr (
         .clk_i  (clk_i),
         .rst_n_i(rst_n_i),
         .dat_i  (s_timer_ctrl_d[timer]),
@@ -933,7 +919,7 @@ module pwm_reg #(
   end
 
   for (genvar channel = 0; channel < `PWM_CHANNEL_COUNT; channel++) begin : gen_channel_registers
-    dffr #(32) u_channel_ctrl_dffr (
+    dffr #(3) u_channel_ctrl_dffr (
         .clk_i  (clk_i),
         .rst_n_i(rst_n_i),
         .dat_i  (s_channel_ctrl_d[channel]),
@@ -1028,7 +1014,7 @@ module pwm_reg #(
   for (
       genvar operator = 0; operator < `PWM_OPERATOR_COUNT; operator++
   ) begin : gen_operator_registers
-    dffr #(32) u_operator_ctrl_dffr (
+    dffr #(2) u_operator_ctrl_dffr (
         .clk_i  (clk_i),
         .rst_n_i(rst_n_i),
         .dat_i  (s_operator_ctrl_d[operator]),
