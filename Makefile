@@ -34,9 +34,13 @@ IVERILOG_OUT := $(BUILD_DIR)/iverilog/pwm_tb.vvp
 IVERILOG_CHANNEL_OUT := $(BUILD_DIR)/iverilog/pwm_channel_tb.vvp
 VERILATOR_DIR := $(BUILD_DIR)/verilator
 HOST_TEST := $(BUILD_DIR)/host/test_pwm
+CLOCK_REPORT_SRCS := $(COMMON_APB) $(COMMON_REGISTER) $(COMMON_FIFO) $(COMMON_CDC) \
+                     $(RTL_SRCS) dv/unit/pwm_clock_report_tb.sv
+CLOCK_REPORT_IV := $(BUILD_DIR)/iverilog/pwm_clock_report_tb.vvp
 
 .PHONY: help doctor format format-check register-check lint test test-iverilog \
-	test-verilator test-host synth formal clean
+	test-verilator test-host test-clock-report-iverilog test-clock-report-verilator \
+	synth synth-clock-report formal clean
 
 help:
 	@printf '%s\n' \
@@ -58,12 +62,14 @@ doctor:
 
 format:
 	$(VERIBLE_FORMAT) --flagfile=$(ROOT)/.verible-format --inplace $(RTL_SRCS) $(RTL_HDRS) \
-		dv/unit/pwm_tb.sv dv/unit/pwm_channel_tb.sv dv/unit/apb4_pwm_tb.sv formal/pwm_formal.sv
+		dv/unit/pwm_tb.sv dv/unit/pwm_channel_tb.sv dv/unit/apb4_pwm_tb.sv \
+		dv/unit/pwm_clock_report_tb.sv dv/unit/pwm_clock_report_timescale.v formal/pwm_formal.sv
 	$(CLANG_FORMAT) -i $(C_SRCS) $(C_HDRS)
 
 format-check:
 	@set -e; for file in $(RTL_SRCS) $(RTL_HDRS) dv/unit/pwm_tb.sv dv/unit/pwm_channel_tb.sv \
-		dv/unit/apb4_pwm_tb.sv formal/pwm_formal.sv; do \
+		dv/unit/apb4_pwm_tb.sv dv/unit/pwm_clock_report_tb.sv \
+		dv/unit/pwm_clock_report_timescale.v formal/pwm_formal.sv; do \
 		tmp=$$(mktemp); $(VERIBLE_FORMAT) --flagfile=$(ROOT)/.verible-format $$file > $$tmp; \
 		cmp -s $$file $$tmp || { echo "SystemVerilog format mismatch: $$file" >&2; \
 		rm -f $$tmp; exit 1; }; rm -f $$tmp; \
@@ -94,13 +100,13 @@ $(IVERILOG_CHANNEL_OUT): rtl/pwm_channel.sv $(RTL_HDRS) dv/unit/pwm_channel_tb.s
 	$(IVERILOG) -g2012 -DSV_ASSRT_DISABLE -Irtl -I$(COMMON_ROOT)/rtl -o $@ \
 		$(COMMON_REGISTER) rtl/pwm_channel.sv dv/unit/pwm_channel_tb.sv -s pwm_channel_tb
 
-test-iverilog: $(IVERILOG_OUT) $(IVERILOG_CHANNEL_OUT)
+test-iverilog: $(IVERILOG_OUT) $(IVERILOG_CHANNEL_OUT) test-clock-report-iverilog
 	$(VVP) $(IVERILOG_OUT) | tee $(BUILD_DIR)/iverilog/test.log
 	@grep -q PWM_TEST_PASS $(BUILD_DIR)/iverilog/test.log
 	$(VVP) $(IVERILOG_CHANNEL_OUT) | tee $(BUILD_DIR)/iverilog/channel-test.log
 	@grep -q PWM_CHANNEL_TEST_PASS $(BUILD_DIR)/iverilog/channel-test.log
 
-test-verilator:
+test-verilator: test-clock-report-verilator
 	@mkdir -p $(VERILATOR_DIR) $(BUILD_DIR)/ccache-tmp $(BUILD_DIR)/tmp
 	CCACHE_DISABLE=1 CCACHE_TEMPDIR=$(BUILD_DIR)/ccache-tmp TMPDIR=$(BUILD_DIR)/tmp \
 	$(VERILATOR) --binary --timing -Wall -Wno-fatal -Wno-DECLFILENAME -Wno-GENUNNAMED \
@@ -111,6 +117,31 @@ test-verilator:
 	$(VERILATOR_DIR)/Vapb4_pwm_tb | tee $(VERILATOR_DIR)/test.log
 	@grep -q APB4_PWM_TEST_PASS $(VERILATOR_DIR)/test.log
 
+$(CLOCK_REPORT_IV): $(CLOCK_REPORT_SRCS) $(RTL_HDRS) dv/unit/pwm_clock_report_timescale.v
+	@mkdir -p $(@D)
+	$(SV2V) --top pwm_clock_report_tb -DSV_ASSRT_DISABLE -Irtl -I$(COMMON_ROOT)/rtl \
+		$(CLOCK_REPORT_SRCS) --write=$(BUILD_DIR)/iverilog/pwm_clock_report_tb.v
+	$(IVERILOG) -g2012 -s pwm_clock_report_tb -o $@ dv/unit/pwm_clock_report_timescale.v \
+		$(BUILD_DIR)/iverilog/pwm_clock_report_tb.v
+
+test-clock-report-iverilog: $(CLOCK_REPORT_IV)
+	$(VVP) $(CLOCK_REPORT_IV) | tee $(BUILD_DIR)/iverilog/clock-report.log
+	@grep -q PWM_CLOCK_REPORT_TEST_PASS $(BUILD_DIR)/iverilog/clock-report.log
+	@! grep -Eiq 'FAILED|FATAL|assertion failed|%Error|SIM_TEST_FAIL|SIM_TEST_TIMEOUT' \
+		$(BUILD_DIR)/iverilog/clock-report.log
+
+test-clock-report-verilator:
+	@mkdir -p $(VERILATOR_DIR)/clock-report $(BUILD_DIR)/ccache-tmp $(BUILD_DIR)/tmp
+	CCACHE_DISABLE=1 CCACHE_TEMPDIR=$(BUILD_DIR)/ccache-tmp TMPDIR=$(BUILD_DIR)/tmp \
+	$(VERILATOR) --binary --timing -Wall -Wno-fatal -Wno-DECLFILENAME -Wno-GENUNNAMED \
+	-Wno-TIMESCALEMOD -Wno-UNUSEDSIGNAL -DSV_ASSRT_DISABLE \
+	--Mdir $(VERILATOR_DIR)/clock-report --top-module pwm_clock_report_tb \
+	-Irtl -I$(COMMON_ROOT)/rtl $(CLOCK_REPORT_SRCS)
+	$(VERILATOR_DIR)/clock-report/Vpwm_clock_report_tb | tee $(VERILATOR_DIR)/clock-report/test.log
+	@grep -q PWM_CLOCK_REPORT_TEST_PASS $(VERILATOR_DIR)/clock-report/test.log
+	@! grep -Eiq 'FAILED|FATAL|assertion failed|%Error|SIM_TEST_FAIL|SIM_TEST_TIMEOUT' \
+		$(VERILATOR_DIR)/clock-report/test.log
+
 $(HOST_TEST): $(C_SRCS) $(C_HDRS)
 	@mkdir -p $(@D)
 	$(HOST_CC) -std=c11 -Wall -Wextra -Werror -pedantic -Isw/include $(C_SRCS) -o $@
@@ -120,7 +151,7 @@ test-host: $(HOST_TEST)
 
 test: test-iverilog test-verilator test-host
 
-synth:
+synth: synth-clock-report
 	@mkdir -p $(BUILD_DIR)/synth
 	$(SV2V) --top pwm_core -Irtl -I$(COMMON_ROOT)/rtl $(COMMON_REGISTER) $(COMMON_FIFO) \
 		$(COMMON_CDC) rtl/pwm_tickgen.sv rtl/pwm_timer.sv rtl/pwm_channel.sv \
@@ -128,6 +159,18 @@ synth:
 		--write=$(BUILD_DIR)/synth/pwm_core.v
 	yosys -p 'read_verilog $(BUILD_DIR)/synth/pwm_core.v; hierarchy -top pwm_core; proc; opt; check; stat' \
 		| tee $(BUILD_DIR)/synth/yosys.log
+
+synth-clock-report:
+	@mkdir -p $(BUILD_DIR)/synth
+	$(SV2V) --top pwm_reg -DSV_ASSRT_DISABLE -Irtl -I$(COMMON_ROOT)/rtl \
+		$(COMMON_REGISTER) $(COMMON_FIFO) $(COMMON_CDC) $(CORE_SRCS) \
+		--write=$(BUILD_DIR)/synth/pwm_reg.v
+	@for mode in 0 1; do \
+		yosys -p "read_verilog $(BUILD_DIR)/synth/pwm_reg.v; \
+		chparam -set UseRuntimeClockHz $$mode pwm_reg; hierarchy -check -top pwm_reg; \
+		proc; opt; check -assert; stat; write_json $(BUILD_DIR)/synth/clock-report-$$mode.json" \
+		| tee $(BUILD_DIR)/synth/clock-report-$$mode.log; \
+	done
 
 formal:
 	@mkdir -p $(BUILD_DIR)/formal-src

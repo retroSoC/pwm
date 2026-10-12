@@ -34,6 +34,7 @@ module pwm_tb;
       .clk_i         (clk_i),
       .rst_n_i       (rst_n_i),
       .debug_halted_i(debug_halted_i),
+      .pclk_hz_i     (32'd0),
       .paddr_i       (paddr_i),
       .psel_i        (psel_i),
       .penable_i     (penable_i),
@@ -112,6 +113,8 @@ module pwm_tb;
 
     bus_read(`PWM_IP_ID_OFFSET, value);
     if (last_error || (value != `PWM_IP_ID_VALUE)) $fatal(1, "PWM ID mismatch");
+    bus_read(`PWM_CLOCK_HZ_OFFSET, value);
+    if (last_error || (value != 1_000_000)) $fatal(1, "static PWM clock override mismatch");
     bus_read(12'h003, value);
     if (!last_error) $fatal(1, "unaligned access accepted");
 

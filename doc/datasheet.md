@@ -10,6 +10,7 @@ capture inputs, a debug-halt input, and one combined interrupt output.
 | --- | --- | --- |
 | `apb4` | slave | 32-bit APB4 programming interface. |
 | `debug_halted_i` | input | Freezes enabled timers when `CTRL.DEBUG_FREEZE` is set. |
+| `pclk_hz_i[31:0]` | input | Synchronous committed nominal PCLK rate when `UseRuntimeClockHz=1`; ignored by default. See the integration guide. |
 | `pwm.fault_i` | input | Asynchronous external fault input. |
 | `pwm.sync_i` | input | Asynchronous timer synchronization input. |
 | `pwm.capture_i[1:0]` | input | Asynchronous timestamp capture inputs. |
@@ -53,7 +54,7 @@ all timer activity through the core command path.
 | `0x024` | `INTR_ENABLE` | RW | Interrupt source mask. |
 | `0x028` | `INTR_TEST` | WO | Software-set interrupt sources. |
 | `0x02C` | `OUTPUT_STATUS` | RO | Output value, enable, dead-time, and carrier observations. |
-| `0x030` | `CLOCK_HZ` | RO | Integration peripheral-clock frequency. |
+| `0x030` | `CLOCK_HZ` | RO | Committed nominal peripheral-clock frequency: `PCLK_HZ` by default, or synchronous `pclk_hz_i` with `UseRuntimeClockHz=1`. |
 | `0x0F4` | `IP_ID` | RO | `0x50574D32`, ASCII-like `PWM2`. |
 | `0x0F8` | `IP_VERSION` | RO | `0x00020000`, version 2.0.0. |
 | `0x0FC` | `CAPABILITY` | RO | ABI, resource counts, and feature bitmap. |

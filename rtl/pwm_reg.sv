@@ -4,7 +4,8 @@
 `include "pwm_define.svh"
 
 module pwm_reg #(
-    parameter int PCLK_HZ = 72_000_000
+    parameter int PCLK_HZ           = 72_000_000,
+    parameter bit UseRuntimeClockHz = 1'b0
 ) (
     // verilog_format: off
     input  logic        clk_i,
@@ -24,7 +25,8 @@ module pwm_reg #(
     input  logic [ 1:0] capture_i,
     output logic [ 3:0] pwm_o,
     output logic [ 3:0] oe_o,
-    output logic        irq_o
+    output logic        irq_o,
+    input  logic [31:0] pclk_hz_i
     // verilog_format: on
 );
 
@@ -240,7 +242,7 @@ module pwm_reg #(
         `PWM_INTR_STATE_OFFSET:      prdata_o = {17'h0, s_intr_state_q};
         `PWM_INTR_ENABLE_OFFSET:     prdata_o = {17'h0, s_intr_enable_q};
         `PWM_OUTPUT_STATUS_OFFSET:   prdata_o = s_output_status;
-        `PWM_CLOCK_HZ_OFFSET:        prdata_o = 32'(PCLK_HZ);
+        `PWM_CLOCK_HZ_OFFSET:        prdata_o = UseRuntimeClockHz ? pclk_hz_i : 32'(PCLK_HZ);
         `PWM_CAPTURE_CTRL_OFFSET:    prdata_o = {31'h0, s_capture_enable_q};
         `PWM_CAPTURE_DIVIDER_OFFSET: prdata_o = {8'h00, s_capture_divider_q};
         `PWM_CAPTURE_COUNTER_OFFSET: prdata_o = s_capture_counter;

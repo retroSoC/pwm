@@ -24,6 +24,7 @@ module apb4_pwm_tb;
       .PCLK_HZ(1_000_000)
   ) u_apb4_pwm (
       .debug_halted_i(debug_halted),
+      .pclk_hz_i     (32'd0),
       .apb4          (u_apb4_if),
       .pwm           (u_pwm_if)
   );
@@ -117,6 +118,7 @@ module apb4_pwm_tb;
     repeat (3) @(posedge clk_i);
 
     expect_read(`PWM_IP_ID_OFFSET, `PWM_IP_ID_VALUE);
+    expect_read(`PWM_CLOCK_HZ_OFFSET, 32'd1_000_000);
     expect_read(`PWM_IP_VERSION_OFFSET, `PWM_IP_VERSION_VALUE);
     apb_read(`PWM_CAPABILITY_OFFSET, value);
     if (last_error || (value[31:24] != `PWM_ABI_VERSION) || (value[15:12] != 4)) begin

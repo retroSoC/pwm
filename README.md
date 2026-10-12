@@ -17,6 +17,11 @@ The controller generates clock enables rather than internal clocks. Common
 `dffr`, `cdc_sync`, and `fifo` components implement state, asynchronous input
 synchronization, and capture queues.
 
+`CLOCK_HZ` reports static `PCLK_HZ` by default. Variable-clock integrations
+may opt into `UseRuntimeClockHz=1` and supply a synchronous committed rate
+through `pclk_hz_i`, with the unchanged register/HAL ABI. See
+[`doc/integration.md`](doc/integration.md) for rate-commit and reset ownership.
+
 ## Repository Layout
 
 - `rtl/`: APB wrapper, interface, register bank, timers, channels, operators,

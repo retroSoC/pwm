@@ -2,7 +2,34 @@
 
 ## Clock, Reset, and Pins
 
-`PCLK_HZ` must match the APB clock supplied through `apb4.pclk`. The design uses
+With the default `UseRuntimeClockHz=0`, `PCLK_HZ` must match the APB clock
+supplied through `apb4.pclk`. Tie the new `pclk_hz_i[31:0]` input to zero in
+static integrations; it is ignored in this mode. Existing named-port instances
+that omit it retain their static behavior, but should connect it when updating
+their source lists to avoid missing-pin lint warnings.
+
+Variable-clock products set `UseRuntimeClockHz=1` and drive `pclk_hz_i` with
+the committed nominal peripheral rate in Hz. `CLOCK_HZ` remains read-only at
+offset `0x030`; the register ABI, discovery values and common C HAL do not
+change. This input changes reporting only, not the timers or clock hardware.
+
+The product owns the following integration contract:
+
+- Supply a valid nonzero 32-bit value from a register in the APB/PCLK domain.
+  This port is not a CDC synchronizer, frequency detector or clock-change command.
+- Quiesce PWM/capture and drain APB work before a rate transition. Commit the
+  complete value atomically, keep it stable throughout each APB transfer, and
+  acknowledge the product clock transition only after that commit.
+- Keep software out of frequency-dependent configuration while the product RCU
+  reports BUSY. Recalculate timer/capture settings before restarting PWM.
+- Drive the safe rate at cold boot. A peripheral-only reset does not reset
+  this product-owned value: readback continues to describe the committed rate.
+
+No fallback to `PCLK_HZ` is applied in runtime mode: zero or unknown input is
+an integration error, not a request to report the static rate. The PWM block
+does not qualify source stability, analog lock or physical timing.
+
+The design uses
 only that clock and active-low `apb4.presetn`; timer and capture rates are
 clock-enable based. Route `pwm_o` and `oe_o` through the SoC pin multiplexer so
 high-impedance fault policy reaches the physical pad enable.
